@@ -1,7 +1,54 @@
-export default angular.module('debouncePromise', []).factory('debouncePromise', ['$q', '$timeout', ($q, $timeout) => () => {
-	const deferred = $q.defer();
+export default angular.module('debouncePromise', []).factory('debouncePromise', ['$q', '$timeout', ($q, $timeout) => {
+	return (fn, delay = 0) => {
+		let timeoutPromise;
+		let deferred;
+		return (...fnArguments) => {
+			if (timeoutPromise) {
+				$timeout.cancel(timeoutPromise);
+			} else {
+				deferred = $q.defer();
+			}
 
-	deferred.resolve();
+			timeoutPromise = $timeout(() => {
+				fn.apply(this, fnArguments).then(result => {
+					deferred.resolve(result);
+				}).catch(error => {
+					deferred.reject(error);
+				});
+				$timeout.cancel(timeoutPromise);
+				timeoutPromise = null;
+			}, delay);
 
-	return deferred.promise;
+			return deferred.promise;
+		};
+	};
 }]).name;
+
+//
+// export default angular.module('debouncePromise', []).factory('debouncePromise', ['$q', '$timeout', ($q, $timeout) => {
+// 	return (fn, delay = 0) => {
+// 		let timeoutPromise;
+// 		return (...fnArguments) => {
+// 			if (timeoutPromise) {
+// 				$timeout.cancel(timeoutPromise);
+// 			} else {
+// 			}
+//
+// 			const deferred = $q.defer();
+//
+//
+// 			timeoutPromise = $timeout(() => {
+// 				fn.apply(this, fnArguments).then(result => {
+// 					deferred.resolve(result);
+// 				}).catch(error => {
+// 					deferred.reject(error);
+// 				}).finally(() => {
+// 					// deferred = null;
+// 				});
+// 				timeoutPromise = null;
+// 			}, delay);
+//
+// 			return deferred.promise;
+// 		};
+// 	};
+// }]).name;
