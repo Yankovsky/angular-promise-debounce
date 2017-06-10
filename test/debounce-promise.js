@@ -3,6 +3,20 @@ import angularMocks from 'angular-mocks';
 import debouncedPromiseModule from '../src/index';
 
 describe('debouncePromise', () => {
+	const noop = () => {};
+
+	const resolve = (fn = noop) => {
+		const deferred = $q.defer();
+		deferred.resolve(fn());
+		return deferred.promise;
+	};
+
+	const reject = (fn = noop) => {
+		const deferred = $q.defer();
+		deferred.reject(fn());
+		return deferred.promise;
+	};
+
 	let debouncePromise, $timeout, $q;
 
 	beforeEach(() => {
@@ -18,11 +32,7 @@ describe('debouncePromise', () => {
 	});
 
 	it('single successful call', () => {
-		const debounced = debouncePromise(() => {
-			const deferred = $q.defer();
-			deferred.resolve('Success');
-			return deferred.promise;
-		}, 100);
+		const debounced = debouncePromise(() => resolve(() => 'Success'), 100);
 
 		debounced().then(result => expect(result).toEqual('Success'));
 
@@ -30,11 +40,7 @@ describe('debouncePromise', () => {
 	});
 
 	it('single unsuccessful call', () => {
-		const debounced = debouncePromise(() => {
-			const deferred = $q.defer();
-			deferred.reject('Error');
-			return deferred.promise;
-		}, 100);
+		const debounced = debouncePromise(() => reject(() => 'Error'), 100);
 
 		debounced().catch(error => expect(error).toEqual('Error'));
 
@@ -42,28 +48,29 @@ describe('debouncePromise', () => {
 	});
 
 	it('single call with zero delay', () => {
-		const debounced = debouncePromise(() => {
-			const deferred = $q.defer();
-			deferred.resolve('Success');
-			return deferred.promise;
-		});
+		const debounced = debouncePromise(() => resolve(() => 'Success'));
 
-		debounced().catch(error => expect(error).toEqual('Success'));
+		debounced().then(error => expect(error).toEqual('Success'));
 
 		$timeout.flush();
 	});
 
-	it('debounce no delay between calls', () => {
-		let callCount = 0;
-		const debounced = debouncePromise(value => {
-			callCount++;
-			const deferred = $q.defer();
-			deferred.resolve(value);
-			return deferred.promise;
-		}, 100);
+	it('should return result of the latest call when calls made without delay', () => {
+		const debounced = debouncePromise(value => resolve(() => value), 100);
 
 		for (let i = 0; i < 5; i++) {
 			debounced(i).then(value => expect(value).toEqual(4));
+		}
+
+		$timeout.flush();
+	});
+
+	it('should call target promise only one time when calls made without delay', () => {
+		let callCount = 0;
+		const debounced = debouncePromise(() => resolve(() => callCount++), 100);
+
+		for (let i = 0; i < 5; i++) {
+			debounced(i);
 		}
 
 		$timeout.flush();
@@ -71,14 +78,8 @@ describe('debouncePromise', () => {
 		expect(callCount).toEqual(1);
 	});
 
-	it('debounce delay >= promise call delay', () => {
-		let callCount = 0;
-		const debounced = debouncePromise(value => {
-			callCount++;
-			const deferred = $q.defer();
-			deferred.resolve(value);
-			return deferred.promise;
-		}, 100);
+	it('should return result of the latest call when calls made within specified delay', () => {
+		const debounced = debouncePromise(value => resolve(() => value), 100);
 
 		for (let i = 0; i < 5; i++) {
 			$timeout(() => {
@@ -90,18 +91,26 @@ describe('debouncePromise', () => {
 
 		$timeout.flush();
 		$timeout.flush();
+	});
+
+	it('should call target promise only one time when calls made within specified delay', () => {
+		let callCount = 0;
+		const debounced = debouncePromise(value => resolve(() => callCount++), 100);
+
+		for (let i = 0; i < 5; i++) {
+			$timeout(() => {
+				debounced(i)
+			}, i * 100);
+		}
+
+		$timeout.flush();
+		$timeout.flush();
 
 		expect(callCount).toEqual(1);
 	});
 
-	it('debounce delay < promise call delay', () => {
-		let callCount = 0;
-		const debounced = debouncePromise(value => {
-			callCount++;
-			const deferred = $q.defer();
-			deferred.resolve(value);
-			return deferred.promise;
-		}, 100);
+	it('????', () => {
+		const debounced = debouncePromise(value => resolve(() => value), 100);
 
 		for (let i = 0; i < 5; i++) {
 			$timeout(() => {
@@ -113,18 +122,30 @@ describe('debouncePromise', () => {
 
 		$timeout.flush();
 		$timeout.flush();
+	});
+
+	it('!!!!', () => {
+		let callCount = 0;
+		const debounced = debouncePromise(value => resolve(() => callCount++), 100);
+
+		for (let i = 0; i < 5; i++) {
+			$timeout(() => {
+				debounced(i);
+			}, i * 101);
+		}
+
+		$timeout.flush();
+		$timeout.flush();
 
 		expect(callCount).toEqual(5);
 	});
 
 	it('nested', () => {
 		let callCount = 0;
-		const debounced = debouncePromise(value => {
+		const debounced = debouncePromise(value => resolve(() => {
 			callCount++;
-			const deferred = $q.defer();
-			deferred.resolve(value);
-			return deferred.promise;
-		}, 100);
+			return value;
+		}), 100);
 
 		$timeout(() => {
 			debounced(1).then(value => {
@@ -151,12 +172,10 @@ describe('debouncePromise', () => {
 
 	it('multiple debounce resolves', () => {
 		let callCount = 0;
-		const debounced = debouncePromise(value => {
+		const debounced = debouncePromise(value => resolve(() => {
 			callCount++;
-			const deferred = $q.defer();
-			deferred.resolve(value);
-			return deferred.promise;
-		}, 100);
+			return value;
+		}), 100);
 
 		$timeout(() => {
 			debounced(1).then(value => {
@@ -190,12 +209,34 @@ describe('debouncePromise', () => {
 		$timeout.flush();
 	});
 
+	it('should wait until delay time has passed', () => {
+		let callCount = 0;
+		const debounced = debouncePromise(value => resolve(() => callCount++), 100);
+
+		$timeout(debounced, 50);
+		$timeout(debounced, 150);
+
+		$timeout.flush(249);
+		expect(callCount).toEqual(0);
+		$timeout.flush(250);
+		expect(callCount).toEqual(1);
+	});
+
+	it('should call the given function again if wait time has passed', () => {
+		let callCount = 0;
+		const debounced = debouncePromise(value => resolve(() => callCount++), 100);
+
+		debounced();
+		$timeout.flush();
+		expect(callCount).toEqual(1);
+
+		debounced();
+		$timeout.flush();
+		expect(callCount).toEqual(2);
+	});
+
 	it('should accept any number of arguments', () => {
-		const debounced = debouncePromise((a, b, c) => {
-			const deferred = $q.defer();
-			deferred.resolve(a + b + c);
-			return deferred.promise;
-		}, 100);
+		const debounced = debouncePromise((a, b, c) => resolve(() => a + b + c), 100);
 
 		for (let i = 0; i < 5; i++) {
 			debounced(i, i * 10, i * 100).then(value => {
@@ -206,12 +247,7 @@ describe('debouncePromise', () => {
 	});
 
 	it('should not create new promise until debounce timeout is not resolved', () => {
-		const debounced = debouncePromise(() => {
-			const deferred = $q.defer();
-			deferred.resolve();
-			return deferred.promise;
-		}, 100);
-
+		const debounced = debouncePromise(() => resolve(), 100);
 
 		let first;
 		$timeout(() => {
