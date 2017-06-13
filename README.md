@@ -1,5 +1,8 @@
 Inspired by other promise-debounce plugins. Unlike other plugins, this one works with angular promises.
 
+Installation:
+`npm i -D angular-promise-debounce`
+
 Basic use-case:
 ```
 angular.module('myApp', ['debouncePromise']).run(['$timeout', '$q', 'debouncePromise', ($timeout, $q, debouncePromise) => {
@@ -27,3 +30,5 @@ Console:
 4
 4
 ```
+
+Check test directory for advanced use-cases.
