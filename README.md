@@ -7,14 +7,14 @@ Basic use-case:
 ```
 angular.module('myApp', ['debouncePromise']).run(['$timeout', '$http', 'debouncePromise', ($timeout, $http, debouncePromise) => {
 	let callsCount = 0;
-	const debounced = debouncePromise(() => {
+	const debounced = debouncePromise(value => {
 		callsCount++;
-		return $http.get('index.html');
+		return $http.get(`index.html?i=${value}`);
 	}, 100);
 
 	for (let i = 0; i < 5; i++) {
 		$timeout(() => {
-			debounced().then(response => console.log(callsCount));
+			debounced(i).then(response => console.log(callsCount, response.config.url));
 		}, i * 100);
 	}
 }]);
@@ -22,11 +22,11 @@ angular.module('myApp', ['debouncePromise']).run(['$timeout', '$http', 'debounce
 
 Console:
 ```
-1
-1
-1
-1
-1
+1 "index.html?i=4"
+1 "index.html?i=4"
+1 "index.html?i=4"
+1 "index.html?i=4"
+1 "index.html?i=4"
 ```
 
 Check test directory for advanced use-cases.
