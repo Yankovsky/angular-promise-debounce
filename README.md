@@ -15,7 +15,7 @@ angular.module('myApp', ['debouncePromise']).run(['$timeout', '$http', 'debounce
 	for (let i = 0; i < 5; i++) {
 		$timeout(() => {
 			debounced(i).then(response => console.log(callsCount, response.config.url));
-		}, i * 100);
+		}, i * 50);
 	}
 }]);
 ```
